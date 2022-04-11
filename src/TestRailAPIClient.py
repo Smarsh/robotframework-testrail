@@ -32,7 +32,7 @@ class TestRailAPIClient(object):
             _run_id_ - ID of the test run;\n
             _protocol_ - connecting protocol to TestRail server: http or https.
         """
-        self._url = '{protocol}://{server}/testrail/index.php?/api/v2/'.format(protocol=protocol, server=server)
+        self._url = '{protocol}://{server}/index.php?/api/v2/'.format(protocol=protocol, server=server)
         self._user = user
         self._password = password
         self.run_id = run_id

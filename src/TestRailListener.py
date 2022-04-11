@@ -61,7 +61,7 @@ class TestRailListener(object):
             _juggler_disable_ - indicator to disable juggler logic; if exist, then juggler logic will be disabled;\n
             _update_ - indicator to update test case in TestRail; if exist, then test will be updated.
         """
-        testrail_url = '{protocol}://{server}/testrail/'.format(protocol=protocol, server=server)
+        testrail_url = '{protocol}://{server}'.format(protocol=protocol, server=server)
         self._url = testrail_url + 'index.php?/api/v2/'
         self._user = user
         self._password = password

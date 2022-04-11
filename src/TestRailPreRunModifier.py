@@ -119,7 +119,7 @@ class TestRailPreRunModifier(SuiteVisitor):
         status_ids = None
         if self.status_names:
             status_ids = [self.tr_client.get_status_id_by_status_label(name) for name in self.status_names]
-        tests_info = self.tr_client.get_tests(run_id=self.run_id, status_ids=status_ids)
+        tests_info = self.tr_client.get_tests(run_id=self.run_id, status_ids=status_ids)['tests']
         return ['testrailid={}'.format(test["case_id"]) for test in tests_info if test["case_id"] is not None]
 
     def _get_tr_stable_tags_list(self) -> List[str]:

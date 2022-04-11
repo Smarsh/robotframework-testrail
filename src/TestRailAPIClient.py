@@ -196,7 +196,7 @@ class TestRailAPIClient(object):
             Test status ID.
         """
         last_case_result = self.get_results_for_case(run_id=run_id, case_id=case_id, limit=1)
-        return last_case_result[0]['status_id'] if last_case_result else None
+        return last_case_result['results'][0]['status_id'] if last_case_result else None
 
     def get_project(self, project_id: Id) -> JsonDict:
         """Get project info by project id.

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
-
+import configparser
 import json
 import re
+from os.path import exists
+import sys
 import requests
 import os
 from typing import Any, Dict, List, Optional, Union
 from robot.api import logger
+from robot.run import RobotFramework
 from TestRailAPIClient import JsonDict, TestRailAPIClient
+import urllib3
+from VariableFileParser import VariableFileParser
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 __author__ = "Dmitriy.Zverev"
 __license__ = "Apache License, Version 2.0"
@@ -48,7 +54,7 @@ class TestRailListener(object):
     TESTRAIL_TEST_STATUS_ID_PASSED = 1
     TESTRAIL_TEST_STATUS_ID_FAILED = 5
 
-    def __init__(self, server: str, user: str, password: str, run_id: str, protocol: str = 'http',
+    def __init__(self, server: str = None, user: str = None, password: str = None, run_id: str = None, protocol: str = 'http',
                  juggler_disable: str = None, update: str = None) -> None:
         """Listener initialization.
 
@@ -61,18 +67,49 @@ class TestRailListener(object):
             _juggler_disable_ - indicator to disable juggler logic; if exist, then juggler logic will be disabled;\n
             _update_ - indicator to update test case in TestRail; if exist, then test will be updated.
         """
-        testrail_url = '{protocol}://{server}'.format(protocol=protocol, server=server)
+        options, arguments = RobotFramework().parse_arguments(sys.argv[1:])
+        if server is not None:
+            self._protocol = protocol
+            self._server = server
+            self._user = user
+            self._password = password
+            self.run_id = run_id
+            self.juggler_disable = juggler_disable
+            self.update = update
+        else:
+            variableFileSettings = VariableFileParser(options)
+            self._protocol = variableFileSettings.protocol
+            self._server = variableFileSettings.server
+            self._user = variableFileSettings.user
+            self._password = variableFileSettings.password
+            self.run_id = variableFileSettings.runId
+            self.juggler_disable = variableFileSettings.jugglerDisable
+            self.update = variableFileSettings.updateTestCases
+
+        if self._protocol is None: raise NameError('variable not defined --> TESTRAIL_CLIENT_PROTOCOL')
+        if self._server is None: raise NameError('variable not defined --> TESTRAIL_CLIENT_SERVER')
+        if self._user is None: raise NameError('variable not defined --> TESTRAIL_CLIENT_USER')
+        if self._password is None: raise NameError('variable not defined --> TESTRAIL_CLIENT_PASSWORD')
+
+        if self.run_id is None or self.run_id == '0':
+            if exists('testRail.yml'):
+                parser = configparser.ConfigParser()
+                parser.read('testRail.yml')
+
+                if parser.has_option('DEFAULT', 'TESTRAIL_RUN_ID'):
+                    self.run_id = str(parser.get('DEFAULT', 'TESTRAIL_RUN_ID'))
+                else:
+                    raise NameError('variable not defined --> TESTRAIL_RUN_ID')
+            else:
+                raise FileNotFoundError('testRail.yml cannot be found. TESTRAIL_RUN_ID cannot be identified')
+
+        testrail_url = '{protocol}://{server}'.format(protocol=self._protocol, server=self._server)
         self._url = testrail_url + 'index.php?/api/v2/'
-        self._user = user
-        self._password = password
-        self.run_id = run_id
-        self.juggler_disable = juggler_disable
-        self.update = update
-        self.tr_client = TestRailAPIClient(server, user, password, run_id, protocol)
+        self.tr_client = TestRailAPIClient(self._server, self._user, self._password, self.run_id, self._protocol)
         self._vars_for_report_link: Optional[Dict[str, str]] = None
         logger.info('[TestRailListener] url: {testrail_url}'.format(testrail_url=testrail_url))
-        logger.info('[TestRailListener] user: {user}'.format(user=user))
-        logger.info('[TestRailListener] the ID of the test run: {run_id}'.format(run_id=run_id))
+        logger.info('[TestRailListener] user: {user}'.format(user=self._user))
+        logger.info('[TestRailListener] the ID of the test run: {run_id}'.format(run_id=self.run_id))
 
     def end_test(self, name: str, attributes: JsonDict) -> None:
         """ Update test case in TestRail.

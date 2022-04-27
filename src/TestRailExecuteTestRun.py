@@ -7,11 +7,20 @@ from requests.exceptions import RequestException
 from robot.api import SuiteVisitor, TestSuite
 from robot.output import LOGGER
 from TestRailAPIClient import TestRailAPIClient, TESTRAIL_STATUS_ID_PASSED
+from robot.run import RobotFramework
+from robot.libraries.BuiltIn import BuiltIn
+import os.path
+import configparser
+import sys
+from os.path import exists
+
+
+from VariableFileParser import VariableFileParser
 
 CONNECTION_TIMEOUT = 60  # Value in seconds of timeout connection with testrail for one request
 
 
-class TestRailPreRunModifier(SuiteVisitor):
+class TestRailExecuteTestRun(SuiteVisitor):
     """Pre-run modifier for starting test cases from a certain test run in [http://www.gurock.com/testrail/ | TestRail].
 
     == Dependencies ==
@@ -47,8 +56,8 @@ class TestRailPreRunModifier(SuiteVisitor):
     | robot --prerunmodifier TestRailPreRunModifier:testrail_server_name:tester_user_name:tester_user_password:20:http:5 robot_suite.robot
     """
 
-    def __init__(self, server: str, user: str, password: str, run_id: str, protocol: str,  # noqa: E951
-                 results_depth: str, *status_names: str) -> None:
+    def __init__(self, server: str = None, user: str = None, password: str = None, run_id: str = None, protocol: str = None,  # noqa: E951
+                 results_depth: str = None, *status_names: str ) -> None:
         """Pre-run modifier initialization.
 
         *Args:*\n
@@ -60,10 +69,38 @@ class TestRailPreRunModifier(SuiteVisitor):
             _results_depth_ - analysis depth of run results;\n
             _status_names_ - name of test statuses in TestRail.
         """
-        self.run_id = run_id
-        self.status_names = status_names
-        self.tr_client = TestRailAPIClient(server, user, password, run_id, protocol)
-        self.results_depth = int(results_depth) if str(results_depth).isdigit() else 0
+        options, arguments = RobotFramework().parse_arguments(sys.argv[1:])
+        if server is not None:
+            self._server = server
+            self._user = user
+            self._password = password
+            self.run_id = run_id
+            self._protocol = protocol
+            self.results_depth = int(results_depth) if str(results_depth).isdigit() else 0
+            self.status_names = status_names
+        else:
+            variableFileSettings = VariableFileParser(options)
+            self._protocol = variableFileSettings.protocol
+            self._server = variableFileSettings.server
+            self._user = variableFileSettings.user
+            self._password = variableFileSettings.password
+            self.run_id = variableFileSettings.runId
+            self.results_depth = variableFileSettings.resultsDepth
+            self.status_names = variableFileSettings.statuses
+
+        if self.run_id is None or self.run_id == '0':
+            if exists('testRail.yml'):
+                parser = configparser.ConfigParser()
+                parser.read('testRail.yml')
+
+                if parser.has_option('DEFAULT', 'TESTRAIL_RUN_ID'):
+                    self.run_id = str(parser.get('DEFAULT', 'TESTRAIL_RUN_ID'))
+                else:
+                    raise NameError('variable not defined --> TESTRAIL_RUN_ID')
+            else:
+                raise FileNotFoundError('testRail.yml cannot be found. TESTRAIL_RUN_ID cannot be identified')
+
+        self.tr_client = TestRailAPIClient(self._server, self._user, self._password, self.run_id, self._protocol)
         self._tr_tags_list: Optional[List[str]] = None
         self._tr_stable_tags_list: Optional[List[str]] = None
         LOGGER.register_syslog()
@@ -189,7 +226,8 @@ class TestRailPreRunModifier(SuiteVisitor):
         except (RequestException, TimeoutError) as error:
             self._log_to_parent_suite(suite, str(error))
 
-    def end_suite(self, suite: TestSuite) -> None:
+
+def end_suite(self, suite: TestSuite) -> None:
         """Removing test suites that are empty after excluding tests that are not part of the TestRail test run.
 
         *Args:*\n

@@ -8,7 +8,6 @@ from robot.run import RobotFramework
 import sys
 from TestRailAPIClient import TestRailAPIClient
 from VariableFileParser import VariableFileParser
-from robot.libraries.BuiltIn import BuiltIn
 from datetime import datetime
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -90,8 +89,6 @@ class TestRailCreateRun(SuiteVisitor):
         test_run_title = self.run_title_prefix + "_" + datetime.now().strftime("%d-%m-%YT%H:%M:%S")
 
         self.run_id = str(self.tr_client.add_test_run(self.project_id, test_run_title)['id'])
-
-        BuiltIn().log_to_console("Creating empty TestRail run titled --> "+test_run_title+" : ID --> "+self.run_id)
 
         # store the run ID in a configuration file
         with open('testRail.yml', 'w') as filetowrite:
@@ -180,8 +177,6 @@ class TestRailCreateRun(SuiteVisitor):
                 # if there are no --included tags then just add all the case IDs
                 else:
                     case_id_list.extend(cases_ids)
-
-                BuiltIn().log_to_console("CASE IDS ->"+str(case_id_list))
                 # loop through --excluded tags in the robot command
                 if len(self.robot_options_excluded_tags) > 0:
                     for excl_tag in self.robot_options_excluded_tags:

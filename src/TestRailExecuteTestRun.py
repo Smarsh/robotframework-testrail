@@ -8,8 +8,6 @@ from robot.api import SuiteVisitor, TestSuite
 from robot.output import LOGGER
 from TestRailAPIClient import TestRailAPIClient, TESTRAIL_STATUS_ID_PASSED
 from robot.run import RobotFramework
-from robot.libraries.BuiltIn import BuiltIn
-import os.path
 import configparser
 import sys
 from os.path import exists

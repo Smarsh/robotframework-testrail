@@ -10,7 +10,7 @@ SRC_DIR = realpath(join(DOCS_DIR, '..', 'src'))
 LIBS = {
     'TestRailAPIClient': 'TestRailAPIClient.py::1::2::3::4',
     'TestRailListener': 'TestRailListener.py::1::2::3::4',
-    'TestRailPreRunModifier': 'TestRailPreRunModifier.py::1::2::3::4::5::6'
+    'TestRailPreRunModifier': 'TestRailExecuteTestRun.py::1::2::3::4::5::6'
 }
 
 if __name__ == '__main__':

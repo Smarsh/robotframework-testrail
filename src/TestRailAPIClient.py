@@ -2,6 +2,8 @@
 
 from requests import post, get
 from typing import Any, cast, Dict, List, Optional, Sequence, Union
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 DEFAULT_TESTRAIL_HEADERS = {'Content-Type': 'application/json'}
 TESTRAIL_STATUS_ID_PASSED = 1
@@ -10,7 +12,6 @@ TESTRAIL_STATUS_ID_PASSED = 1
 JsonDict = Dict[str, Any]  # noqa: E993
 JsonList = List[JsonDict]  # noqa: E993
 Id = Union[str, int]  # noqa: E993
-
 
 class TestRailAPIClient(object):
     """Library for working with [http://www.gurock.com/testrail/ | TestRail].
@@ -195,7 +196,7 @@ class TestRailAPIClient(object):
         *Returns:* \n
             Test status ID.
         """
-        last_case_result = self.get_results_for_case(run_id=run_id, case_id=case_id, limit=1)
+        last_case_result = self.get_results_for_case(run_id=run_id, case_id=case_id, limit=1)['results']
         return last_case_result['results'][0]['status_id'] if last_case_result else None
 
     def get_project(self, project_id: Id) -> JsonDict:
@@ -210,6 +211,11 @@ class TestRailAPIClient(object):
         uri = 'get_project/{project_id}'.format(project_id=project_id)
         response = self._send_get(uri=uri, headers=DEFAULT_TESTRAIL_HEADERS)
         return cast(JsonDict, response)
+
+    def get_suites(self, project_id: Id) -> JsonDict:
+        uri = 'get_suites/{project_id}'.format(project_id=project_id)
+        response = self._send_get(uri=uri, headers=DEFAULT_TESTRAIL_HEADERS)
+        return cast(JsonDict,response)
 
     def get_suite(self, suite_id: Id) -> JsonDict:
         """Get suite info by suite id.
@@ -341,4 +347,46 @@ class TestRailAPIClient(object):
             data[key] = additional_data[key]
 
         response = self._send_post(uri=uri, data=data)
+        return cast(JsonDict, response)
+
+    def add_test_run(self, project_id, title: str):
+        uri = 'add_run/{project_id}'.format(project_id=project_id)
+        data = {
+            'name': title,
+            'case_ids': [],
+            'include_all': False
+
+        }
+        response = self._send_post(uri=uri,data=data)
+        return cast(JsonDict, response)
+
+    def add_test_case_to_run(self, run_id, case_ids):
+        uri = 'update_run/{run_id}'.format(run_id=run_id)
+        data = {
+            'case_ids': case_ids,
+            'include_all': False
+        }
+        response = self._send_post(uri=uri,data=data)
+        return cast(JsonDict, response)
+
+    def add_plan_entry(self, plan_id: Id = None, suite_id: Id = None, name: str = None, description: str = None,
+                       assignedto_id: int = None, include_all: bool = None, case_ids: List[Id] = None,
+                       config_ids: List[Id] = None, refs: str = None, runs: List = None ):
+        uri = 'add_plan_entry/{plan_id}'.format(plan_id=plan_id)
+        data = {}
+        if suite_id is not None: data['suite_id'] = suite_id
+        if name is not None: data['name'] = name
+        if description is not None: data['description'] = description
+        if assignedto_id is not None: data['assignedto_id'] = assignedto_id
+        if include_all is not None: data['include_all'] = include_all
+        if case_ids is not None: data['case_ids'] = case_ids
+        if config_ids is not None: data['config_ids'] = config_ids
+        if refs is not None: data['refs'] = refs
+        if runs is not None: data['runs'] = runs
+        response = self._send_post(uri=uri, data=data)
+        return cast(JsonDict, response)
+
+    def get_tests_from_test_run(self, run_id):
+        uri = 'get_tests/{run_id}'.format(run_id=run_id)
+        response = self._send_get(uri=uri, headers=DEFAULT_TESTRAIL_HEADERS)
         return cast(JsonDict, response)

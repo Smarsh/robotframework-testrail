@@ -106,7 +106,11 @@ class TestRailCreateRun(SuiteVisitor):
         test_rail_ids = []
         for tag in testcase.tags:
             if 'testrailid=' in str(tag).lower():
-                test_rail_ids.append(str(tag).lower().split('=')[1])
+                tr_id = str(tag).lower().split('=')[1]
+                if tr_id.isdigit():
+                    test_rail_ids.append(int(tr_id))
+                else:
+                    raise TypeError(tr_id+" cannot be converted to int type")
         if len(test_rail_ids) > 0:
             return test_rail_ids
         return None
@@ -131,7 +135,7 @@ class TestRailCreateRun(SuiteVisitor):
         response = self.tr_client.get_tests_from_test_run(run_id)
         test_ids = []
         for test in response['tests']:
-            test_ids.append(test['id'])
+            test_ids.append(test['case_id'])
         return test_ids
 
 
@@ -181,7 +185,7 @@ class TestRailCreateRun(SuiteVisitor):
                 if len(self.robot_options_excluded_tags) > 0:
                     for excl_tag in self.robot_options_excluded_tags:
                         # if the test case contains an excluded tag
-                        if self.does_testcase_contain_tag(excl_tag):
+                        if self.does_testcase_contain_tag(testcase, excl_tag):
                             # loop through the test case testrail IDs
                             for case_id in cases_ids:
                                 # if the case Id is in the list then remove
@@ -194,12 +198,15 @@ class TestRailCreateRun(SuiteVisitor):
             if len(case_id_list) > 0:
                 # get existing test ids in testrail run
                 existing_case_ids = self.get_list_of_test_ids_in_testrail_run(self.run_id)
-                # get rid of case ids which already exist in testrail run
-                update_case_ids = list(set(case_id_list + existing_case_ids))
-                for id in update_case_ids:
-                    if id not in existing_case_ids:
-                        # post request sent to add test case to test run
-                        response = self.tr_client.add_test_case_to_run(self.run_id, update_case_ids)
-                        break
+
+                changedList = False
+                for listed_case_id in case_id_list:
+                    if listed_case_id not in existing_case_ids:
+                        existing_case_ids.append(listed_case_id)
+                        changedList = True
+
+                if changedList:
+                    self.tr_client.add_test_case_to_run(self.run_id, existing_case_ids)
+
         except (RequestException, TimeoutError) as error:
             self._log_to_parent_suite(suite, str(error))

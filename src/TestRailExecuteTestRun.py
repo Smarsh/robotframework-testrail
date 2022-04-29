@@ -225,7 +225,7 @@ class TestRailExecuteTestRun(SuiteVisitor):
             self._log_to_parent_suite(suite, str(error))
 
 
-def end_suite(self, suite: TestSuite) -> None:
+    def end_suite(self, suite: TestSuite) -> None:
         """Removing test suites that are empty after excluding tests that are not part of the TestRail test run.
 
         *Args:*\n
